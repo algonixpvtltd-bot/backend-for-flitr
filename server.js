@@ -163,6 +163,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Direct text/typing/reaction message forwarding fallback (ensures 100% message delivery)
+  socket.on('chat-message', (data) => {
+    if (data && data.to && data.payload) {
+      io.to(data.to).emit('chat-message', {
+        from: socket.id,
+        payload: data.payload,
+      });
+    }
+  });
+
   // Skip / Next stranger
   socket.on('next-partner', (data) => {
     leaveActiveRoom(socket.id);
