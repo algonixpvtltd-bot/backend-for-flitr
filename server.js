@@ -17,8 +17,9 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
-  pingTimeout: 10000,
-  pingInterval: 5000,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  connectTimeout: 45000,
 });
 
 /** @type {Array<{socketId: string, userName: string, interests: string[], mode: string, joinedAt: number}>} */
@@ -29,6 +30,9 @@ const activeRooms = new Map();
 
 /** @type {Map<string, string>} */
 const userRooms = new Map();
+
+/** @type {Map<string, NodeJS.Timeout>} */
+const disconnectTimers = new Map();
 
 function broadcastOnlineCount() {
   io.emit('online-count', io.engine.clientsCount);
@@ -151,6 +155,9 @@ io.on('connection', (socket) => {
 
     findMatch(user);
   });
+
+  // Keep-alive heartbeat (prevents free cloud proxies from idling or dropping WebSockets)
+  socket.on('ping-alive', () => {});
 
   // WebRTC Signaling forwarder (SDP Offer / SDP Answer / ICE Candidates)
   // ONLY handles the initial 1-second handshake keys; after this, all video and chat are 100% P2P
