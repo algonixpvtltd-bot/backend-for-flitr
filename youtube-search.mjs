@@ -28,10 +28,17 @@ export async function searchYouTube(
   query,
   { instance = process.env.PIPED_API_URL, fetcher = fetch } = {}
 ) {
-  const starter = () =>
-    starterVideos.filter((v) =>
-      (v.title + ' ' + v.uploader).toLowerCase().includes(query.toLowerCase())
-    );
+  const starter = () => {
+    if (!query.trim()) return starterVideos;
+    const q = query.toLowerCase().trim();
+    return starterVideos.filter((v) => {
+      const text = (v.title + ' ' + v.uploader).toLowerCase();
+      return (
+        text.includes(q) ||
+        (q === 'animation' && text.includes('animated'))
+      );
+    });
+  };
 
   if (!instance) {
     return {
