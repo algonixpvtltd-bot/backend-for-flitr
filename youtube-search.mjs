@@ -26,7 +26,10 @@ export const starterVideos = [
 
 export async function searchYouTube(
   query,
-  { instance = process.env.PIPED_API_URL, fetcher = fetch } = {}
+  {
+    instance = process.env.PIPED_API_URL || 'https://api.piped.private.coffee',
+    fetcher = fetch,
+  } = {}
 ) {
   const starter = () => {
     if (!query.trim()) return starterVideos;
