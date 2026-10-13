@@ -10,12 +10,28 @@ if (fs.existsSync(path.join(root, '.env'))) {
   process.loadEnvFile(path.join(root, '.env'));
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
 
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, corsHeaders);
+      return res.end();
+    }
+
+    // YouTube search API endpoint
     if (url.pathname === '/api/youtube/search' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      });
       return res.end(
         JSON.stringify(
           await searchYouTube((url.searchParams.get('q') || '').slice(0, 100))
@@ -24,7 +40,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      res.writeHead(410, { 'Content-Type': 'application/json' });
+      res.writeHead(410, {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      });
       return res.end(
         JSON.stringify({ error: 'Room data has moved to Firebase.' })
       );
@@ -42,10 +61,31 @@ const server = http.createServer(async (req, res) => {
         ? requested
         : path.join(base, 'index.html');
 
+    // If dist/ folder doesn't exist (e.g. backend-only deployment)
     if (!fs.existsSync(file)) {
-      res.writeHead(503);
+      if (url.pathname === '/' || url.pathname === '/health') {
+        res.writeHead(200, {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        });
+        return res.end(
+          JSON.stringify({
+            status: 'ok',
+            service: 'Velune media backend',
+            endpoints: {
+              search: '/api/youtube/search?q={query}',
+            },
+          })
+        );
+      }
+      res.writeHead(404, {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      });
       return res.end(
-        'Run npm run build, or open the development site on port 5173.'
+        JSON.stringify({
+          error: 'Not found. Frontend static build is not hosted here.',
+        })
       );
     }
 
@@ -62,6 +102,7 @@ const server = http.createServer(async (req, res) => {
 
     const size = fs.statSync(file).size;
     const headers = {
+      ...corsHeaders,
       'Content-Type': types[path.extname(file)] || 'application/octet-stream',
       'Accept-Ranges': 'bytes',
     };
